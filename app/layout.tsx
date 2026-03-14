@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Link from 'next/link'
-import Navbar from '@/components/Navbar'
+// import Navbar from '@/components/Navbar'
 
 export const metadata: Metadata = {
   title: 'FixMate — Find Skilled Workers Near You',
@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <Navbar />
+        {/* <Navbar /> */}
         <main>{children}</main>
 
         <footer style={{

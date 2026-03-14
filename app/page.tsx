@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { Search, MapPin, Star, ChevronRight, Wrench, Hammer, Wind, Paintbrush, Settings, Layers, Zap } from 'lucide-react'
-
-// ─── DATA ────────────────────────────────────────────────────────────────────
+import Navbar from '@/components/Navbar'
 
 const services = [
   { icon: Wrench,     name: 'Plumbing',    count: '8,200+' },
@@ -432,6 +431,7 @@ const S = `
 export default function LandingPage() {
   return (
     <>
+      <Navbar/>
       <style>{S}</style>
       <div className="page">
 

@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from "next/navigation";
 import Link from 'next/link'
 import {
   Send, Sparkles, MapPin, Star, ArrowRight,
   RotateCcw, Wrench, Zap, Hammer, Wind,
-  Paintbrush, Settings, ChevronRight, Bot, User
+  Paintbrush, Settings, ChevronRight, Bot, User, ArrowLeft
 } from 'lucide-react'
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
@@ -101,7 +102,6 @@ function buildFlow(issue: string, when: string, time: string): Message[] {
 const S = `
   .ai-page {
     min-height: 100vh;
-    padding-top: 68px;
     background: #FAFAF8;
     display: flex;
     flex-direction: column;
@@ -462,13 +462,19 @@ export default function AIAssistantPage() {
       pushAI({ text: 'Hi! I\'m your FixMate AI assistant 👋\n\nI\'ll help you find the perfect worker in minutes. First — what do you need fixed or done?' }, 300)
     }
   }
+  const router = useRouter();
+
 
   return (
     <>
       <style>{S}</style>
       <div className="ai-page">
-
-        {/* Header */}
+        <ArrowLeft
+          size={30}
+          color="#AFAFAF"
+          className="cursor-pointer ml-10"
+          onClick={() => router.back()}
+        />
         <div className="ai-header">
           <div className="ai-header-left">
             <div className="ai-avatar">
@@ -487,10 +493,8 @@ export default function AIAssistantPage() {
           )}
         </div>
 
-        {/* Body */}
         <div className="ai-body">
 
-          {/* Welcome state */}
           {messages.length === 0 && (
             <div className="ai-welcome">
               <div className="ai-welcome-icon">

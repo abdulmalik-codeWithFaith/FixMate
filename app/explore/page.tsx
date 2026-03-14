@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Search, MapPin, Star, SlidersHorizontal, X, ChevronDown } from 'lucide-react'
+import { useRouter } from "next/navigation";
+import { Search, MapPin, Star, SlidersHorizontal, X, ChevronDown, ArrowLeft } from 'lucide-react'
 
-// ─── DATA ────────────────────────────────────────────────────────────────────
 
 const allWorkers = [
   { id: 'james-mitchell',    initials: 'JM', name: 'James Mitchell',    skill: 'Electrician', location: 'London, UK',       rating: 4.9, jobs: 214, price: 45,  currency: '£', bio: '9 years installing wiring, consumer units and solar systems. Fast, clean work with full compliance certification.',     avatarBg: '#FFF3EE', avatarColor: '#FF5C1A', available: true  },
@@ -24,16 +24,13 @@ const allWorkers = [
 const skills    = ['All', 'Electrician', 'Plumber', 'Carpenter', 'Painter', 'Tiling', 'Technician', 'AC Repair']
 const sortOptions = ['Top Rated', 'Most Jobs', 'Price: Low to High', 'Price: High to Low']
 
-// ─── STYLES ──────────────────────────────────────────────────────────────────
-
 const S = `
-  .explore-page { min-height: 100vh; background: #FAFAF8; padding-top: 68px; }
+  .explore-page { min-height: 100vh; background: #FAFAF8;}
 
-  /* HEADER */
   .explore-header {
     background: white;
     border-bottom: 1px solid #E8E6E1;
-    padding: 40px 40px 0;
+    padding: 30px 40px 0;
   }
   .explore-header-inner { max-width: 1200px; margin: 0 auto; }
   .explore-title {
@@ -310,13 +307,12 @@ export default function ExplorePage() {
   if (sortBy === 'Most Jobs')            filtered = [...filtered].sort((a, b) => b.jobs - a.jobs)
   if (sortBy === 'Price: Low to High')   filtered = [...filtered].sort((a, b) => a.price - b.price)
   if (sortBy === 'Price: High to Low')   filtered = [...filtered].sort((a, b) => b.price - a.price)
-
+  const router = useRouter();
   return (
     <>
       <style>{S}</style>
       <div className="explore-page">
 
-        {/* Location popup */}
         {showLocation && (
           <div className="location-overlay">
             <div className="location-modal">
@@ -334,10 +330,15 @@ export default function ExplorePage() {
             </div>
           </div>
         )}
-
-        {/* Header */}
         <div className="explore-header">
           <div className="explore-header-inner">
+            {/* <ArrowLeft size={30} color="#AFAFAF" className='cursor-pointer'/> */}
+            <ArrowLeft
+              size={30}
+              color="#AFAFAF"
+              className="cursor-pointer"
+              onClick={() => router.back()}
+            />
             <h1 className="explore-title">Find <em>Skilled Workers</em></h1>
             <p className="explore-sub">Browse {allWorkers.length} verified artisans across the globe</p>
 
