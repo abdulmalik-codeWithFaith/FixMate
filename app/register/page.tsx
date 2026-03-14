@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin, ArrowRight, Star, Users, Briefcase, HeadphonesIcon } from 'lucide-react'
+import Image from 'next/image'
+import Logo from "@/public/logo.svg"
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
@@ -317,7 +319,6 @@ export default function RegisterPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (validate()) {
-      // TODO: Firebase createUserWithEmailAndPassword
       console.log('Register', form)
     }
   }
@@ -331,7 +332,7 @@ export default function RegisterPage() {
   return (
     <>
       <style>{S}</style>
-      <div className="auth-page mt-10">
+      <div className="auth-page">
 
         <div className="auth-left">
           <div className="auth-left-glow" />
@@ -339,11 +340,7 @@ export default function RegisterPage() {
           <div className="auth-grid-lines" />
 
           <Link href="/" className="auth-logo">
-            <div className="auth-logo-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                <path d="M13.78 15.3 19.78 21.3 21.89 19.14 15.89 13.14 13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.96L4.97 21.25 2.86 19.14 8 14 6 12 7.07 10.93 9.15 13 10.09 12.06 8 10 9.07 8.93 11.15 11 12.09 10.06 10 8 11.07 6.93 13.15 9 14.3 7.85C14.1 7.31 14 6.71 14 6.1 14 3.32 16.24 1.1 19.02 1.1 19.72 1.1 20.34 1.27 20.95 1.52L18.31 4.16 19.95 5.79 22.59 3.15C22.84 3.75 23 4.37 23 5.07 23 7.85 20.78 10.07 18 10.07L17.5 10.1Z"/>
-              </svg>
-            </div>
+            <Image src={Logo} alt='logo' width={50} />
             <span className="auth-logo-text">Fix<span>Mate</span></span>
           </Link>
 

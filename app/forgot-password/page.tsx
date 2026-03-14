@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Mail, ArrowRight, ArrowLeft, CheckCircle, RefreshCw, Shield, Zap, Lock } from 'lucide-react'
+import Image from 'next/image'
+import Logo from "@/public/logo.svg"
 
 type Screen = 'request' | 'sent' | 'verify'
 
@@ -293,18 +295,13 @@ export default function ForgotPasswordPage() {
   return (
     <>
       <style>{S}</style>
-      <div className="fp-page mt-10">
+      <div className="fp-page">
 
-        {/* ── LEFT ── */}
         <div className="fp-left">
           <div className="fp-glow1" /><div className="fp-glow2" /><div className="fp-grid" />
 
           <Link href="/" className="fp-logo">
-            <div className="fp-logo-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                <path d="M13.78 15.3 19.78 21.3 21.89 19.14 15.89 13.14 13.78 15.3M17.5 10.1C17.11 10.1 16.69 10.05 16.36 9.96L4.97 21.25 2.86 19.14 8 14 6 12 7.07 10.93 9.15 13 10.09 12.06 8 10 9.07 8.93 11.15 11 12.09 10.06 10 8 11.07 6.93 13.15 9 14.3 7.85C14.1 7.31 14 6.71 14 6.1 14 3.32 16.24 1.1 19.02 1.1 19.72 1.1 20.34 1.27 20.95 1.52L18.31 4.16 19.95 5.79 22.59 3.15C22.84 3.75 23 4.37 23 5.07 23 7.85 20.78 10.07 18 10.07L17.5 10.1Z"/>
-              </svg>
-            </div>
+            <Image src={Logo} alt='logo' width={50} />
             <span className="fp-logo-text">Fix<span>Mate</span></span>
           </Link>
 

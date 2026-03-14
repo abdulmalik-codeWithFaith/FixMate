@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { Search, MapPin, Star, ChevronRight, Wrench, Hammer, Wind, Paintbrush, Settings, Layers, Zap } from 'lucide-react'
 import Navbar from '@/components/Navbar'
+import Footer from '@/components/Footer'
+import Logo from "@/public/logo.svg"
 
 const services = [
   { icon: Wrench,     name: 'Plumbing',    count: '8,200+' },
@@ -34,7 +36,6 @@ const testimonials = [
 const stats   = [{ value: '50K+', label: 'Verified Workers' }, { value: '300K+', label: 'Jobs Completed' }, { value: '150+', label: 'Countries' }, { value: '4.8★', label: 'Average Rating' }]
 const regions = [{ flag: '🌍', label: 'Africa' }, { flag: '🌎', label: 'Americas' }, { flag: '🌏', label: 'Asia Pacific' }, { flag: '🇪🇺', label: 'Europe' }, { flag: '🌐', label: '150+ Countries' }]
 
-// ─── STYLES ──────────────────────────────────────────────────────────────────
 
 const S = `
   .page { overflow-x: hidden; }
@@ -42,7 +43,7 @@ const S = `
   /* HERO */
   .hero {
     min-height: 100vh;
-    padding: 130px 40px 80px;
+    padding: 100px 40px 80px;
     display: flex;
     align-items: center;
     background: linear-gradient(160deg, #FAFAF8 55%, #FFF3EE 100%);
@@ -685,6 +686,7 @@ export default function LandingPage() {
         </div>
 
       </div>
+      <Footer/>
     </>
   )
 }
