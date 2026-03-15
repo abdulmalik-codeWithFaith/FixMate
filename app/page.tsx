@@ -33,7 +33,7 @@ const testimonials = [
   { text: 'As a carpenter, FixMate has tripled my client base. The booking system is smooth and I get paid on time. Best decision.',  name: 'Ravi Menon',     location: 'Bangalore, India',  initials: 'RM', avatarBg: '#F0FDF4', avatarColor: '#16A34A' },
 ]
 
-const stats   = [{ value: '50K+', label: 'Verified Workers' }, { value: '300K+', label: 'Jobs Completed' }, { value: '150+', label: 'Countries' }, { value: '4.8★', label: 'Average Rating' }]
+const stats   = [{ value: '2+', label: 'Verified Workers' }, { value: '3+', label: 'Jobs Completed' }, { value: '1', label: 'Countries' }, { value: '4.8★', label: 'Average Rating' }]
 const regions = [{ flag: '🌍', label: 'Africa' }, { flag: '🌎', label: 'Americas' }, { flag: '🌏', label: 'Asia Pacific' }, { flag: '🇪🇺', label: 'Europe' }, { flag: '🌐', label: '150+ Countries' }]
 
 
@@ -453,7 +453,7 @@ export default function LandingPage() {
               </h1>
 
               <p className="hero-sub">
-                Connect with verified plumbers, electricians, carpenters & more — anywhere in the world. Book in minutes, get the job done right.
+                Connect with verified plumbers, electricians, carpenters & more anywhere in the world. Book in minutes, get the job done right.
               </p>
 
               <div className="search-box">
