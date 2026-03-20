@@ -1,22 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/context/AuthContext'
+import { db } from '@/lib/firebase'
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore'
 import {
   Clock, CheckCircle, XCircle, Star, ChevronRight,
   MessageCircle, RotateCcw, Calendar, MapPin,
-  ChevronLeft, Wrench, Search
+  ChevronLeft, Wrench, Search, Loader2
 } from 'lucide-react'
 
 type Tab = 'all' | 'pending' | 'accepted' | 'completed' | 'cancelled'
-
-const orders = [
-  { id: 'o1', worker: 'James Mitchell', initials: 'JM', skill: 'Electrician', date: 'Today, 2:00 PM',    location: '12 Baker St, London',    status: 'accepted',   price: '£90',     avatarBg: '#FFF3EE', avatarColor: '#FF5C1A', workerId: 'james-mitchell', desc: 'Consumer unit replacement and full house rewire check.' },
-  { id: 'o2', worker: 'Carlos Rivera',  initials: 'CR', skill: 'Plumber',     date: 'Mar 14, 10:00 AM', location: '88 Ocean Dr, Miami',      status: 'pending',    price: '$120',    avatarBg: '#EEF6FF', avatarColor: '#2563EB', workerId: 'carlos-rivera',  desc: 'Fix leaking kitchen pipe and replace bathroom tap.' },
-  { id: 'o3', worker: 'Aisha Patel',    initials: 'AP', skill: 'Painter',     date: 'Mar 10, 9:00 AM',  location: 'Dubai Marina, Unit 4',    status: 'completed',  price: 'AED 320', avatarBg: '#F0FDF4', avatarColor: '#16A34A', workerId: 'aisha-patel',    desc: 'Full living room and hallway repaint in white eggshell.' },
-  { id: 'o4', worker: 'Kenji Tanaka',   initials: 'KT', skill: 'Carpenter',   date: 'Mar 5, 11:00 AM',  location: '3-4-1 Shibuya, Tokyo',    status: 'completed',  price: '¥22,000', avatarBg: '#FFF8EE', avatarColor: '#D97706', workerId: 'kenji-tanaka',   desc: 'Custom walnut TV unit and floating shelves installation.' },
-  { id: 'o5', worker: 'Priya Sharma',   initials: 'PS', skill: 'Technician',  date: 'Feb 28, 3:00 PM',  location: '204 Linking Rd, Mumbai',  status: 'cancelled',  price: '$50',     avatarBg: '#F5F0FF', avatarColor: '#7C3AED', workerId: 'priya-sharma',   desc: 'AC gas refill and filter cleaning.' },
-]
 
 const statusConfig: Record<string, { label: string; bg: string; color: string; icon: React.ReactNode }> = {
   pending:   { label: 'Pending',   bg: '#FFF8EE', color: '#D97706', icon: <Clock size={11} />        },
@@ -27,128 +22,100 @@ const statusConfig: Record<string, { label: string; bg: string; color: string; i
 
 const S = `
   .orders-page { min-height: 100vh; background: #F5F4F1; }
-
-  .orders-topbar {
-    background: white; border-bottom: 1px solid #E8E6E1;
-    padding: 0 40px; height: 64px;
-    display: flex; align-items: center; gap: 16px;
-    position: sticky; top: 0; z-index: 40;
-  }
-  .topbar-back {
-    display: flex; align-items: center; justify-content: center;
-    width: 36px; height: 36px; border-radius: 10px;
-    color: #6B6B6B; text-decoration: none; transition: all 0.2s;
-    border: 1.5px solid #E8E6E1; flex-shrink: 0;
-  }
+  .orders-topbar { background: white; border-bottom: 1px solid #E8E6E1; padding: 0 40px; height: 64px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 40; }
+  .topbar-back { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; color: #6B6B6B; text-decoration: none; transition: all 0.2s; border: 1.5px solid #E8E6E1; flex-shrink: 0; }
   .topbar-back:hover { border-color: #0F0F0F; color: #0F0F0F; }
   .topbar-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: #0F0F0F; flex: 1; }
-  .topbar-explore {
-    display: flex; align-items: center; gap: 6px;
-    background: #FF5C1A; color: white;
-    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600;
-    border: none; border-radius: 9px; padding: 8px 16px;
-    text-decoration: none; transition: background 0.2s;
-  }
+  .topbar-explore { display: flex; align-items: center; gap: 6px; background: #FF5C1A; color: white; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; border: none; border-radius: 9px; padding: 8px 16px; text-decoration: none; transition: background 0.2s; }
   .topbar-explore:hover { background: #FF7A40; }
-
   .orders-header { background: white; border-bottom: 1px solid #E8E6E1; padding: 24px 40px 0; }
   .orders-header-inner { max-width: 900px; margin: 0 auto; }
   .orders-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; letter-spacing: -1px; color: #0F0F0F; margin-bottom: 4px; }
   .orders-sub { font-size: 14px; color: #6B6B6B; font-weight: 300; margin-bottom: 24px; }
-
   .orders-tabs { display: flex; overflow-x: auto; scrollbar-width: none; }
   .orders-tabs::-webkit-scrollbar { display: none; }
-  .orders-tab {
-    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600;
-    color: #6B6B6B; background: none; border: none;
-    padding: 14px 20px; cursor: pointer; transition: color 0.2s;
-    border-bottom: 2.5px solid transparent; margin-bottom: -1px;
-    white-space: nowrap; display: flex; align-items: center; gap: 6px;
-  }
+  .orders-tab { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: #6B6B6B; background: none; border: none; padding: 14px 20px; cursor: pointer; transition: color 0.2s; border-bottom: 2.5px solid transparent; margin-bottom: -1px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
   .orders-tab:hover { color: #0F0F0F; }
   .orders-tab.active { color: #FF5C1A; border-bottom-color: #FF5C1A; }
-  .tab-count {
-    background: #F5F4F1; color: #6B6B6B; font-size: 11px;
-    padding: 2px 7px; border-radius: 100px; transition: all 0.2s;
-  }
+  .tab-count { background: #F5F4F1; color: #6B6B6B; font-size: 11px; padding: 2px 7px; border-radius: 100px; transition: all 0.2s; }
   .orders-tab.active .tab-count { background: #FF5C1A; color: white; }
-
   .orders-body { max-width: 900px; margin: 0 auto; padding: 32px 40px; display: flex; flex-direction: column; gap: 16px; }
-
   .order-card { background: white; border: 1px solid #E8E6E1; border-radius: 18px; overflow: hidden; transition: all 0.2s; }
   .order-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
   .order-main { padding: 22px 24px; display: flex; align-items: flex-start; gap: 16px; }
-  .order-avatar {
-    width: 52px; height: 52px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; flex-shrink: 0;
-  }
+  .order-avatar { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; flex-shrink: 0; }
   .order-info { flex: 1; min-width: 0; }
   .order-worker { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: #0F0F0F; margin-bottom: 6px; }
   .order-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
   .order-meta-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #6B6B6B; }
   .order-skill { font-size: 11px; font-weight: 600; background: #FFF3EE; color: #FF5C1A; padding: 2px 8px; border-radius: 100px; }
-  .order-status {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 100px;
-    font-family: 'Syne', sans-serif;
-  }
+  .order-status { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 100px; font-family: 'Syne', sans-serif; }
   .order-desc { font-size: 13px; color: #6B6B6B; font-weight: 300; line-height: 1.6; }
   .order-right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex-shrink: 0; }
   .order-price { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: #0F0F0F; }
-
-  .order-footer {
-    border-top: 1px solid #E8E6E1; padding: 14px 24px;
-    display: flex; align-items: center; justify-content: space-between;
-    background: #FAFAF8; flex-wrap: wrap; gap: 10px;
-  }
+  .order-footer { border-top: 1px solid #E8E6E1; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; background: #FAFAF8; flex-wrap: wrap; gap: 10px; }
   .order-footer-left { display: flex; gap: 8px; flex-wrap: wrap; }
-  .action-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600;
-    border-radius: 9px; padding: 8px 16px; cursor: pointer;
-    text-decoration: none; transition: all 0.2s; border: none;
-  }
-  .action-primary   { background: #FF5C1A; color: white; }
-  .action-primary:hover   { background: #FF7A40; }
+  .action-btn { display: inline-flex; align-items: center; gap: 6px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; border-radius: 9px; padding: 8px 16px; cursor: pointer; text-decoration: none; transition: all 0.2s; border: none; }
+  .action-primary { background: #FF5C1A; color: white; }
+  .action-primary:hover { background: #FF7A40; }
   .action-secondary { background: white; color: #0F0F0F; border: 1.5px solid #E8E6E1; }
   .action-secondary:hover { border-color: #0F0F0F; }
-  .action-ghost     { background: transparent; color: #6B6B6B; border: 1.5px solid #E8E6E1; }
+  .action-ghost { background: transparent; color: #6B6B6B; border: 1.5px solid #E8E6E1; }
   .action-ghost:hover { background: #F5F4F1; color: #0F0F0F; }
-
   .review-prompt { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6B6B6B; }
   .review-stars { display: flex; gap: 3px; cursor: pointer; }
-  .review-star { transition: color 0.15s; }
-
   .empty-state { text-align: center; padding: 80px 20px; }
-  .empty-icon-wrap {
-    width: 72px; height: 72px; border-radius: 20px; background: #F5F4F1;
-    display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;
-  }
+  .empty-icon-wrap { width: 72px; height: 72px; border-radius: 20px; background: #F5F4F1; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
   .empty-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px; color: #0F0F0F; margin-bottom: 8px; }
   .empty-sub { font-size: 15px; color: #6B6B6B; margin-bottom: 24px; }
-  .empty-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: #FF5C1A; color: white;
-    font-family: 'Syne', sans-serif; font-weight: 600; font-size: 15px;
-    border: none; border-radius: 12px; padding: 13px 28px;
-    text-decoration: none; transition: background 0.2s;
-  }
+  .empty-btn { display: inline-flex; align-items: center; gap: 8px; background: #FF5C1A; color: white; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 15px; border: none; border-radius: 12px; padding: 13px 28px; text-decoration: none; transition: background 0.2s; }
   .empty-btn:hover { background: #FF7A40; }
-
-  @media (max-width: 768px) {
-    .orders-topbar { padding: 0 16px; }
-    .orders-header { padding: 20px 16px 0; }
-    .orders-body { padding: 20px 16px; }
-    .order-main { flex-wrap: wrap; }
-    .order-right { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
-  }
+  @media (max-width: 768px) { .orders-topbar { padding: 0 16px; } .orders-header { padding: 20px 16px 0; } .orders-body { padding: 20px 16px; } .order-main { flex-wrap: wrap; } .order-right { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; } }
 `
 
 export default function OrdersPage() {
-  const [activeTab, setActiveTab]   = useState<Tab>('all')
-  const [hoverStar, setHoverStar]   = useState<Record<string, number>>({})
-  const [ratings, setRatings]       = useState<Record<string, number>>({})
+  const { user, loading: authLoading } = useAuth()
+  const [orders, setOrders] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<Tab>('all')
+  const [hoverStar, setHoverStar] = useState<Record<string, number>>({})
+  const [ratings, setRatings] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, 'jobs'), 
+      where('clientId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const ordersData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        // Fallbacks for data mapping
+        worker: doc.data().workerName || 'Worker',
+        initials: (doc.data().workerName || 'W').split(' ').map((n:any) => n[0]).join(''),
+        skill: doc.data().workerSkill || 'Service',
+        date: doc.data().appointmentDate || 'TBD',
+        location: doc.data().address || 'Remote',
+        status: doc.data().status || 'pending',
+        price: `${doc.data().currency || '$'}${doc.data().totalPrice || 0}`,
+        desc: doc.data().description || '',
+        avatarBg: doc.data().workerAvatarBg || '#FFF3EE',
+        avatarColor: doc.data().workerAvatarColor || '#FF5C1A',
+        workerId: doc.data().workerId
+      }));
+      setOrders(ordersData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching orders:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'all',       label: 'All'       },
@@ -158,8 +125,16 @@ export default function OrdersPage() {
     { key: 'cancelled', label: 'Cancelled' },
   ]
 
-  const filtered  = activeTab === 'all' ? orders : orders.filter(o => o.status === activeTab)
-  const countFor  = (tab: Tab) => tab === 'all' ? orders.length : orders.filter(o => o.status === tab).length
+  const filtered = activeTab === 'all' ? orders : orders.filter(o => o.status === activeTab)
+  const countFor = (tab: Tab) => tab === 'all' ? orders.length : orders.filter(o => o.status === tab).length
+
+  if (authLoading || loading) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F5F4F1' }}>
+        <Loader2 className="animate-spin" color="#FF5C1A" size={40} />
+      </div>
+    )
+  }
 
   return (
     <>
@@ -197,7 +172,7 @@ export default function OrdersPage() {
             </div>
           ) : (
             filtered.map(order => {
-              const st = statusConfig[order.status]
+              const st = statusConfig[order.status] || statusConfig.pending
               return (
                 <div key={order.id} className="order-card">
                   <div className="order-main">

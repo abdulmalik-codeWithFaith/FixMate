@@ -45,7 +45,8 @@ const S = `
   .form-title { font-family: 'Syne', sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -1px; color: #0F0F0F; margin-bottom: 8px; }
   .form-sub { font-size: 15px; color: #6B6B6B; font-weight: 300; }
   .google-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; background: white; border: 1.5px solid #E8E6E1; border-radius: 12px; padding: 13px; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: #0F0F0F; cursor: pointer; transition: all 0.2s; margin-bottom: 24px; }
-  .google-btn:hover { border-color: #0F0F0F; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  .google-btn:hover:not(:disabled) { border-color: #0F0F0F; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  .google-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .google-icon { width: 20px; height: 20px; }
   .divider { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
   .divider-line { flex: 1; height: 1px; background: #E8E6E1; }
@@ -55,70 +56,103 @@ const S = `
   .field-wrap { display: flex; align-items: center; gap: 10px; background: white; border: 1.5px solid #E8E6E1; border-radius: 12px; padding: 12px 16px; transition: border-color 0.2s; }
   .field-wrap:focus-within { border-color: #FF5C1A; box-shadow: 0 0 0 3px rgba(255,92,26,0.08); }
   .field-wrap input { flex: 1; border: none; outline: none; background: transparent; font-family: 'DM Sans', sans-serif; font-size: 15px; color: #0F0F0F; }
+  .field-wrap input::placeholder { color: #AFAFAF; }
   .field-icon { color: #AFAFAF; flex-shrink: 0; }
   .field-action { background: none; border: none; cursor: pointer; color: #AFAFAF; display: flex; padding: 0; }
+  .field-action:hover { color: #6B6B6B; }
   .field-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 8px; }
   .remember-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; color: #6B6B6B; }
   .remember-box { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid #E8E6E1; background: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; cursor: pointer; }
   .remember-box.checked { background: #FF5C1A; border-color: #FF5C1A; }
   .forgot-link { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; color: #FF5C1A; text-decoration: none; }
+  .forgot-link:hover { text-decoration: underline; }
   .submit-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: #FF5C1A; color: white; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.2s; margin-bottom: 24px; }
   .submit-btn:hover:not(:disabled) { background: #FF7A40; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,92,26,0.25); }
   .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .form-footer { text-align: center; font-size: 14px; color: #6B6B6B; }
   .form-footer a { font-family: 'Syne', sans-serif; font-weight: 700; color: #FF5C1A; text-decoration: none; }
+  .form-footer a:hover { text-decoration: underline; }
   .field-error { border-color: #EF4444 !important; }
   .error-msg { font-size: 12px; color: #EF4444; margin-top: 5px; }
-  @media (max-width: 900px) { .auth-page { grid-template-columns: 1fr; } .auth-left { display: none; } .auth-right { padding: 40px 24px; min-height: 100vh; } }
+  @media (max-width: 900px) {
+    .auth-page { grid-template-columns: 1fr; }
+    .auth-left { display: none; }
+    .auth-right { padding: 40px 24px; min-height: 100vh; }
+  }
 `
 
 export default function LoginPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [remember, setRemember] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
 
+  const [loading, setLoading]           = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [remember, setRemember]         = useState(false)
+  const [email, setEmail]               = useState('')
+  const [password, setPassword]         = useState('')
+  const [errors, setErrors]             = useState<{ email?: string; password?: string }>({})
+
+  // ── Read the redirect destination saved by the worker profile page ──────────
+  // The profile page calls: sessionStorage.setItem('authRedirect', '/booking/id')
+  // After login we read it, clear it, then navigate there (or fall back to /dashboard)
+  const handlePostLogin = (displayName?: string | null) => {
+    const redirect = sessionStorage.getItem('authRedirect')
+    sessionStorage.removeItem('authRedirect')           // always clean up
+
+    toast.success(`Welcome back${displayName ? `, ${displayName}` : ''}!`)
+
+    // Small delay so the toast is visible before navigation
+    setTimeout(() => {
+      router.push(redirect || '/dashboard')
+    }, 600)
+  }
+
+  // ── Validation ───────────────────────────────────────────────────────────────
   const validate = () => {
     const e: { email?: string; password?: string } = {}
-    if (!email) e.email = 'Email is required'
-    else if (!/\S+@\S+\.\S+/.test(email)) e.email = 'Enter a valid email'
-    if (!password) e.password = 'Password is required'
-    else if (password.length < 6) e.password = 'Must be at least 6 characters'
+    if (!email)                              e.email    = 'Email is required'
+    else if (!/\S+@\S+\.\S+/.test(email))   e.email    = 'Enter a valid email'
+    if (!password)                           e.password = 'Password is required'
+    else if (password.length < 6)           e.password = 'Must be at least 6 characters'
     setErrors(e)
     return Object.keys(e).length === 0
   }
 
+  // ── Google Sign-in ───────────────────────────────────────────────────────────
   const handleGoogleLogin = async () => {
     setLoading(true)
     const provider = new GoogleAuthProvider()
     try {
       const result = await signInWithPopup(auth, provider)
-      toast.success(`Welcome back, ${result.user.displayName}`)
-      router.push('/dashboard')
+      handlePostLogin(result.user.displayName)
     } catch (err: any) {
-      toast.error(err.message || 'Google sign-in failed')
+      // Don't toast if user simply closed the popup
+      if (err.code !== 'auth/popup-closed-by-user') {
+        toast.error('Google sign-in failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
   }
 
+  // ── Email / Password Sign-in ─────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
 
     setLoading(true)
     try {
-      await signInWithEmailAndPassword(auth, email, password)
-      toast.success('Signed in successfully!')
-      router.push('/dashboard')
+      const result = await signInWithEmailAndPassword(auth, email, password)
+      handlePostLogin(result.user.displayName)
     } catch (err: any) {
-      // Friendly error mapping
-      let msg = 'Invalid email or password'
-      if (err.code === 'auth/user-not-found') msg = 'No account found with this email'
-      if (err.code === 'auth/wrong-password') msg = 'Incorrect password'
+      // Map Firebase error codes to friendly messages
+      const code = err.code || ''
+      let msg = 'Incorrect email or password. Please try again.'
+      if (code === 'auth/user-not-found')      msg = 'No account found with this email.'
+      if (code === 'auth/wrong-password')       msg = 'Incorrect password.'
+      if (code === 'auth/invalid-credential')   msg = 'Incorrect email or password. Please try again.'
+      if (code === 'auth/too-many-requests')    msg = 'Too many attempts. Please wait a moment.'
+      if (code === 'auth/user-disabled')        msg = 'This account has been disabled. Contact support.'
+      if (code === 'auth/invalid-email')        msg = 'Please enter a valid email address.'
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -128,16 +162,18 @@ export default function LoginPage() {
   return (
     <>
       <style>{S}</style>
-      <Toaster position="top-right" />
+      <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
+
       <div className="auth-page">
 
+        {/* ── LEFT PANEL ── */}
         <div className="auth-left">
           <div className="auth-left-glow" />
           <div className="auth-left-glow2" />
           <div className="auth-grid-lines" />
 
           <Link href="/" className="auth-logo">
-            <Image src={Logo} alt='logo' width={50} />
+            <Image src={Logo} alt="FixMate logo" width={50} height={50} />
             <span className="auth-logo-text">Fix<span>Mate</span></span>
           </Link>
 
@@ -146,14 +182,18 @@ export default function LoginPage() {
               <span style={{ width: 6, height: 6, background: '#FF5C1A', borderRadius: '50%', display: 'inline-block' }} />
               Trusted Worldwide
             </div>
-            <h2 className="auth-hero-title">Welcome back<br />to <em>FixMate</em></h2>
-            <p className="auth-hero-sub">Your go-to platform for finding verified, skilled workers — from plumbers to electricians — anywhere in the world.</p>
+            <h2 className="auth-hero-title">
+              Welcome back<br />to <em>FixMate</em>
+            </h2>
+            <p className="auth-hero-sub">
+              Your go-to platform for finding verified, skilled workers — from plumbers to electricians — anywhere in the world.
+            </p>
 
             <div className="auth-features">
               {[
-                { icon: <Zap size={18} color="#FF5C1A" />, title: 'Book in Minutes', sub: 'Find and book a verified worker in under 5 minutes' },
-                { icon: <Shield size={18} color="#FF5C1A" />, title: 'Verified & Safe', sub: 'Every worker is ID-checked and background verified' },
-                { icon: <Star size={18} color="#FF5C1A" />, title: 'Rated by Real Clients', sub: 'Transparent reviews from real customers like you' },
+                { icon: <Zap size={18} color="#FF5C1A" />,    title: 'Book in Minutes',       sub: 'Find and book a verified worker in under 5 minutes'     },
+                { icon: <Shield size={18} color="#FF5C1A" />, title: 'Verified & Safe',        sub: 'Every worker is ID-checked and background verified'      },
+                { icon: <Star size={18} color="#FF5C1A" />,   title: 'Rated by Real Clients',  sub: 'Transparent reviews from real customers like you'        },
                 { icon: <Wrench size={18} color="#FF5C1A" />, title: '60+ Service Categories', sub: 'From plumbing to carpentry — we have every skill covered' },
               ].map(f => (
                 <div key={f.title} className="auth-feature">
@@ -171,7 +211,9 @@ export default function LoginPage() {
             <div className="auth-testi-stars">
               {[...Array(5)].map((_, i) => <Star key={i} size={14} color="#F59E0B" fill="#F59E0B" />)}
             </div>
-            <p className="auth-testi-text">&ldquo;FixMate found me a brilliant electrician within minutes. The platform is so easy to use and the worker was top notch.&rdquo;</p>
+            <p className="auth-testi-text">
+              &ldquo;FixMate found me a brilliant electrician within minutes. The platform is so easy to use and the worker was top notch.&rdquo;
+            </p>
             <div className="auth-testi-author">
               <div className="auth-testi-avatar">SL</div>
               <div>
@@ -182,13 +224,16 @@ export default function LoginPage() {
           </div>
         </div>
 
+        {/* ── RIGHT PANEL ── */}
         <div className="auth-right">
           <div className="auth-form-wrap">
+
             <div className="form-top">
               <h1 className="form-title">Sign in</h1>
               <p className="form-sub">Enter your credentials to access your account</p>
             </div>
 
+            {/* Google */}
             <button className="google-btn" onClick={handleGoogleLogin} disabled={loading}>
               <svg className="google-icon" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -196,7 +241,7 @@ export default function LoginPage() {
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
               </svg>
-              {loading ? 'Processing...' : 'Continue with Google'}
+              {loading ? 'Processing…' : 'Continue with Google'}
             </button>
 
             <div className="divider">
@@ -206,6 +251,7 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} noValidate>
+              {/* Email */}
               <div className="field">
                 <label className="field-label">Email address</label>
                 <div className={`field-wrap${errors.email ? ' field-error' : ''}`}>
@@ -221,6 +267,7 @@ export default function LoginPage() {
                 {errors.email && <p className="error-msg">{errors.email}</p>}
               </div>
 
+              {/* Password */}
               <div className="field">
                 <label className="field-label">Password</label>
                 <div className={`field-wrap${errors.password ? ' field-error' : ''}`}>
@@ -239,9 +286,13 @@ export default function LoginPage() {
                 {errors.password && <p className="error-msg">{errors.password}</p>}
               </div>
 
+              {/* Remember / Forgot */}
               <div className="field-row">
                 <label className="remember-label">
-                  <div className={`remember-box${remember ? ' checked' : ''}`} onClick={() => setRemember(!remember)}>
+                  <div
+                    className={`remember-box${remember ? ' checked' : ''}`}
+                    onClick={() => setRemember(!remember)}
+                  >
                     {remember && <span style={{ color: 'white', fontSize: 11 }}>✓</span>}
                   </div>
                   Remember me
@@ -250,7 +301,7 @@ export default function LoginPage() {
               </div>
 
               <button type="submit" className="submit-btn" disabled={loading}>
-                {loading ? 'Signing in...' : 'Sign In'} <ArrowRight size={17} />
+                {loading ? 'Signing in…' : 'Sign In'} <ArrowRight size={17} />
               </button>
             </form>
 

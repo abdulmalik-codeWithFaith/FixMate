@@ -1,40 +1,12 @@
 'use client'
 
-import { useState, createContext, useContext, useEffect, ReactNode } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { onAuthStateChanged, User } from 'firebase/auth'
-import { auth } from '@/lib/firebase' // Ensure this path is correct
+import { useAuth } from '@/context/AuthContext'
 import {
   ChevronLeft, MapPin, Star, Calendar, Clock,
   FileText, CheckCircle, AlertCircle, Navigation, Lock, Loader2
 } from 'lucide-react'
-
-// --- AUTH CONTEXT LOGIC (Fixed TS Errors) ---
-const AuthContext = createContext<{ user: User | null; loading: boolean }>({
-  user: null,
-  loading: true,
-});
-
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  return (
-    <AuthContext.Provider value={{ user, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => useContext(AuthContext);
 
 // --- DESIGN CONSTANTS ---
 const worker = {
@@ -49,19 +21,8 @@ const timeSlots = ['08:00 AM','09:00 AM','10:00 AM','11:00 AM','12:00 PM','01:00
 
 const S = `
   .book-page { min-height: 100vh; background: #F5F4F1; }
-  .book-topbar {
-    background: white; border-bottom: 1px solid #E8E6E1;
-    padding: 0 40px; height: 64px;
-    display: flex; align-items: center; gap: 16px;
-    position: sticky; top: 0; z-index: 40;
-  }
-  .back-link {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 36px; height: 36px; border-radius: 10px;
-    color: #6B6B6B; text-decoration: none; transition: all 0.2s;
-    border: 1.5px solid #E8E6E1; flex-shrink: 0;
-  }
-  .back-link:hover { border-color: #0F0F0F; color: #0F0F0F; }
+  .book-topbar { background: white; border-bottom: 1px solid #E8E6E1; padding: 0 40px; height: 64px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 40; }
+  .back-link { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; color: #6B6B6B; text-decoration: none; border: 1.5px solid #E8E6E1; flex-shrink: 0; }
   .book-page-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: #0F0F0F; }
   .book-body { max-width: 960px; margin: 0 auto; padding: 32px 40px; display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
   .book-card { background: white; border: 1px solid #E8E6E1; border-radius: 20px; overflow: hidden; }
@@ -71,7 +32,7 @@ const S = `
   .field { margin-bottom: 16px; }
   .field-label { display: block; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; color: #0F0F0F; margin-bottom: 6px; }
   .field-label span { color: #FF5C1A; }
-  .field-input { width: 100%; background: #F5F4F1; border: 1.5px solid #E8E6E1; border-radius: 12px; padding: 12px 16px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0F0F0F; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
+  .field-input { width: 100%; background: #F5F4F1; border: 1.5px solid #E8E6E1; border-radius: 12px; padding: 12px 16px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: #0F0F0F; outline: none; box-sizing: border-box; }
   .field-input:focus { border-color: #FF5C1A; background: white; box-shadow: 0 0 0 3px rgba(255,92,26,0.08); }
   .field-textarea { min-height: 100px; resize: vertical; }
   .field-icon-wrap { position: relative; }
@@ -80,45 +41,24 @@ const S = `
   .error-msg { font-size: 12px; color: #EF4444; margin-top: 4px; }
   .time-slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
   .time-slot { background: #F5F4F1; border: 1.5px solid #E8E6E1; border-radius: 9px; padding: 9px 4px; text-align: center; font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; color: #6B6B6B; cursor: pointer; transition: all 0.2s; }
-  .time-slot:hover { border-color: #FF5C1A; color: #FF5C1A; background: #FFF3EE; }
   .time-slot.selected { background: #FF5C1A; border-color: #FF5C1A; color: white; }
   .price-wrap { position: relative; }
   .price-prefix { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-family: 'Syne', sans-serif; font-weight: 700; color: #0F0F0F; font-size: 15px; pointer-events: none; }
   .price-wrap input { padding-left: 30px; }
-  .price-note { font-size: 12px; color: #6B6B6B; margin-top: 6px; }
   .book-sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 80px; }
   .worker-summary { background: white; border: 1px solid #E8E6E1; border-radius: 20px; padding: 24px; }
   .ws-top { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid #E8E6E1; }
   .ws-avatar { width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 19px; flex-shrink: 0; }
   .ws-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: #0F0F0F; }
   .ws-skill { display: inline-block; font-size: 11px; font-weight: 600; background: #FFF3EE; color: #FF5C1A; padding: 3px 9px; border-radius: 100px; margin: 3px 0; }
-  .ws-meta { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6B6B6B; }
   .ws-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 14px; }
   .ws-row-label { color: #6B6B6B; display: flex; align-items: center; gap: 6px; }
-  .ws-row-val { font-family: 'Syne', sans-serif; font-weight: 700; color: #0F0F0F; font-size: 14px; }
   .ws-price-big { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 26px; color: #FF5C1A; }
-  .ws-price-note { font-size: 12px; color: #6B6B6B; }
-  .ws-divider { height: 1px; background: #E8E6E1; margin: 14px 0; }
-  .order-summary { background: white; border: 1px solid #E8E6E1; border-radius: 20px; padding: 24px; }
-  .os-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: #0F0F0F; margin-bottom: 14px; }
-  .os-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 10px; color: #6B6B6B; }
-  .os-row span:last-child { color: #0F0F0F; font-weight: 600; font-family: 'Syne', sans-serif; }
-  .os-row.total { font-size: 15px; color: #0F0F0F; border-top: 1px solid #E8E6E1; padding-top: 12px; margin-top: 4px; }
-  .os-row.total span:last-child { color: #FF5C1A; font-size: 17px; font-weight: 800; }
-  .os-note { font-size: 11px; color: #AFAFAF; margin-top: 10px; line-height: 1.5; }
   .submit-card { background: white; border: 1px solid #E8E6E1; border-radius: 20px; padding: 24px; }
-  .submit-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: #FF5C1A; color: white; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; padding: 15px; cursor: pointer; transition: all 0.2s; margin-bottom: 12px; }
-  .submit-btn:hover { background: #FF7A40; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,92,26,0.25); }
-  .submit-trust { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: #6B6B6B; }
-  .success-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .success-modal { background: white; border-radius: 24px; padding: 48px 40px; max-width: 420px; width: 100%; text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,0.2); animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-  @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  .success-icon { width: 80px; height: 80px; border-radius: 50%; background: #F0FDF4; border: 3px solid #22C55E; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
-  .success-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 24px; color: #0F0F0F; margin-bottom: 10px; }
-  .success-sub { font-size: 15px; color: #6B6B6B; font-weight: 300; line-height: 1.7; margin-bottom: 28px; }
-  .success-btn { display: block; width: 100%; background: #FF5C1A; color: white; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 15px; border: none; border-radius: 12px; padding: 14px; margin-bottom: 10px; text-decoration: none; cursor: pointer; transition: background 0.2s; text-align: center; }
-  .success-btn-sec { display: block; width: 100%; background: transparent; color: #6B6B6B; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 14px; border: 1.5px solid #E8E6E1; border-radius: 12px; padding: 12px; text-decoration: none; cursor: pointer; transition: all 0.2s; text-align: center; }
-  @media (max-width: 860px) { .book-body { grid-template-columns: 1fr; padding: 20px 16px; } .book-sidebar { position: static; } .book-topbar { padding: 0 16px; } }
+  .submit-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: #FF5C1A; color: white; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; border: none; border-radius: 12px; padding: 15px; cursor: pointer; transition: all 0.2s; }
+  .success-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+  .success-modal { background: white; border-radius: 24px; padding: 48px 40px; max-width: 420px; width: 100%; text-align: center; }
+  @media (max-width: 860px) { .book-body { grid-template-columns: 1fr; padding: 20px 16px; } .book-sidebar { position: static; } }
 `
 
 export default function BookingPage() {
@@ -141,10 +81,8 @@ export default function BookingPage() {
     return Object.keys(e).length === 0
   }
 
-  const estHours = proposedPrice && worker.price ? Math.ceil(Number(proposedPrice) / worker.price) : 1
-  const totalEst = worker.price * estHours
+  const totalEst = proposedPrice ? Number(proposedPrice) : worker.price;
 
-  // 1. LOADING STATE
   if (loading) {
     return (
       <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F5F4F1' }}>
@@ -153,7 +91,6 @@ export default function BookingPage() {
     )
   }
 
-  // 2. LOGGED OUT STATE
   if (!user) {
     return (
       <>
@@ -163,33 +100,28 @@ export default function BookingPage() {
             <div style={{ background: '#FFF3EE', width: 64, height: 64, borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
               <Lock size={32} color="#FF5C1A" />
             </div>
-            <h2 className="success-title" style={{ fontSize: 20 }}>Login Required</h2>
-            <p className="os-note" style={{ marginBottom: 32, fontSize: 14 }}>You need an account to book verified workers like {worker.name.split(' ')[0]}.</p>
-            <Link href="/login" className="success-btn">Login to Continue</Link>
-            <Link href="/register" className="success-btn-sec" style={{ border: 'none' }}>Create an account</Link>
+            <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 22, marginBottom: 10 }}>Login Required</h2>
+            <p style={{ color: '#6B6B6B', fontSize: 14, marginBottom: 32 }}>Please sign in to book <strong>{worker.name}</strong>.</p>
+            <Link href="/login" className="submit-btn" style={{textDecoration:'none'}}>Login to Continue</Link>
           </div>
         </div>
       </>
     )
   }
 
-  // 3. MAIN BOOKING FORM
   return (
     <>
       <style>{S}</style>
       <div className="book-page">
-
         {submitted && (
           <div className="success-overlay">
             <div className="success-modal">
-              <div className="success-icon"><CheckCircle size={40} color="#22C55E" /></div>
-              <h2 className="success-title">Booking Sent!</h2>
-              <p className="success-sub">
-                Your request has been sent to <strong>{worker.name}</strong>.
-                They typically respond within {worker.responseTime}.
-              </p>
-              <Link href="/orders" className="success-btn">View My Orders</Link>
-              <Link href={`/chat/${worker.id}`} className="success-btn-sec">Message {worker.name.split(' ')[0]}</Link>
+              <div style={{ width: 80, height: 80, borderRadius: '50%', background: '#F0FDF4', border: '3px solid #22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                <CheckCircle size={40} color="#22C55E" />
+              </div>
+              <h2 style={{ fontFamily: 'Syne', fontWeight: 800, fontSize: 24, marginBottom: 10 }}>Booking Sent!</h2>
+              <p style={{ color: '#6B6B6B', lineHeight: 1.7, marginBottom: 28 }}>Your request for <strong>{worker.skill}</strong> services has been sent.</p>
+              <Link href="/orders" className="submit-btn" style={{textDecoration:'none'}}>View My Orders</Link>
             </div>
           </div>
         )}
@@ -207,7 +139,7 @@ export default function BookingPage() {
                 <label className="field-label">Job description <span>*</span></label>
                 <textarea
                   className={`field-input field-textarea${errors.description ? ' field-error' : ''}`}
-                  placeholder="Describe what you need done..."
+                  placeholder="Describe what needs to be done..."
                   value={description}
                   onChange={e => { setDescription(e.target.value); setErrors(p => ({ ...p, description: '' })) }}
                 />
@@ -223,17 +155,12 @@ export default function BookingPage() {
             </div>
 
             <div className="book-section">
-              <p className="book-section-title"><span className="book-section-num">2</span>Job Location</p>
+              <p className="book-section-title"><span className="book-section-num">2</span>Location</p>
               <div className="field">
-                <label className="field-label">Address <span>*</span></label>
+                <label className="field-label">Service Address <span>*</span></label>
                 <div className="field-icon-wrap">
                   <Navigation size={15} className="field-icon-inner" />
-                  <input
-                    type="text"
-                    className={`field-input${errors.location ? ' field-error' : ''}`}
-                    style={{ paddingLeft: 42 }}
-                    placeholder="Enter full job address"
-                    value={location}
+                  <input type="text" className={`field-input${errors.location ? ' field-error' : ''}`} style={{ paddingLeft: 42 }} placeholder="Job address" value={location}
                     onChange={e => { setLocation(e.target.value); setErrors(p => ({ ...p, location: '' })) }}
                   />
                 </div>
@@ -242,29 +169,21 @@ export default function BookingPage() {
             </div>
 
             <div className="book-section">
-              <p className="book-section-title"><span className="book-section-num">3</span>Date &amp; Time</p>
+              <p className="book-section-title"><span className="book-section-num">3</span>Schedule</p>
               <div className="field">
                 <label className="field-label">Preferred date <span>*</span></label>
                 <div className="field-icon-wrap">
                   <Calendar size={15} className="field-icon-inner" />
-                  <input
-                    type="date"
-                    className={`field-input${errors.date ? ' field-error' : ''}`}
-                    style={{ paddingLeft: 42 }}
-                    value={date}
-                    min={new Date().toISOString().split('T')[0]}
+                  <input type="date" className={`field-input${errors.date ? ' field-error' : ''}`} style={{ paddingLeft: 42 }} value={date}
                     onChange={e => { setDate(e.target.value); setErrors(p => ({ ...p, date: '' })) }}
                   />
                 </div>
               </div>
               <div className="field">
-                <label className="field-label">Preferred time <span>*</span></label>
+                <label className="field-label">Arrival time <span>*</span></label>
                 <div className="time-slots">
                   {timeSlots.map(t => (
-                    <div key={t} className={`time-slot${selectedTime === t ? ' selected' : ''}`}
-                      onClick={() => { setSelectedTime(t); setErrors(p => ({ ...p, time: '' })) }}>
-                      {t}
-                    </div>
+                    <div key={t} className={`time-slot${selectedTime === t ? ' selected' : ''}`} onClick={() => { setSelectedTime(t); setErrors(p => ({ ...p, time: '' })) }}>{t}</div>
                   ))}
                 </div>
               </div>
@@ -282,18 +201,17 @@ export default function BookingPage() {
                 </div>
               </div>
               <div className="ws-row"><span className="ws-row-label"><MapPin size={14} />Location</span><span className="ws-row-val">{worker.location}</span></div>
-              <div className="ws-divider" />
-              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-                <div><p className="ws-price-big">{worker.currency}{worker.price}</p><p className="ws-price-note">per hour</p></div>
-                <div style={{ textAlign: 'right' }}><p style={{ fontSize: 12, color: '#6B6B6B' }}>Est. total</p><p style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 16, color: '#0F0F0F' }}>{worker.currency}{totalEst}</p></div>
-              </div>
+              <div style={{ height: 1, background: '#E8E6E1', margin: '14px 0' }} />
+              <div><p className="ws-price-big">{worker.currency}{totalEst}</p><p style={{fontSize: 12, color: '#6B6B6B'}}>Estimated Total</p></div>
             </div>
 
             <div className="submit-card">
               <button className="submit-btn" onClick={() => { if (validate()) setSubmitted(true) }}>
                 <FileText size={17} /> Send Booking Request
               </button>
-              <div className="submit-trust"><AlertCircle size={13} color="#AFAFAF" />No payment charged yet</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, color: '#6B6B6B', marginTop: 12 }}>
+                <AlertCircle size={13} color="#AFAFAF" /> No payment yet
+              </div>
             </div>
           </div>
         </div>

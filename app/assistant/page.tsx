@@ -3,8 +3,16 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from "next/navigation";
 import Link from 'next/link'
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  limit 
+} from 'firebase/firestore'
+import { db } from '@/lib/firebase' // Adjust this path to your firebase config
 import {
-  Send, Sparkles, MapPin, Star, ArrowRight,
+  Send, Sparkles, MapPin, Star,
   RotateCcw, Wrench, Zap, Hammer, Wind,
   Paintbrush, Settings, ChevronRight, Bot, User, ArrowLeft
 } from 'lucide-react'
@@ -35,69 +43,60 @@ interface Worker {
   avatarColor: string
 }
 
-// ─── MOCK WORKERS ────────────────────────────────────────────────────────────
+// ─── FIREBASE DATA FETCHING ──────────────────────────────────────────────────
 
-const workerPool: Record<string, Worker[]> = {
-  plumbing: [
-    { id: 'carlos-rivera',  initials: 'CR', name: 'Carlos Rivera',  skill: 'Plumber',     location: 'Miami, USA',    rating: 4.8, price: '$60/hr',    jobs: 189, avatarBg: '#EEF6FF', avatarColor: '#2563EB' },
-    { id: 'lucas-mendes',   initials: 'LM', name: 'Lucas Mendes',   skill: 'Plumber',     location: 'São Paulo, BR', rating: 4.5, price: '$35/hr',    jobs: 143, avatarBg: '#EEF6FF', avatarColor: '#2563EB' },
-    { id: 'ahmed-hassan',   initials: 'AH', name: 'Ahmed Hassan',   skill: 'Plumber',     location: 'Cairo, Egypt',  rating: 4.7, price: '$28/hr',    jobs: 201, avatarBg: '#EEF6FF', avatarColor: '#2563EB' },
-  ],
-  electrical: [
-    { id: 'james-mitchell', initials: 'JM', name: 'James Mitchell', skill: 'Electrician', location: 'London, UK',    rating: 4.9, price: '£45/hr',    jobs: 214, avatarBg: '#FFF3EE', avatarColor: '#FF5C1A' },
-    { id: 'amara-osei',     initials: 'AO', name: 'Amara Osei',     skill: 'Electrician', location: 'Accra, Ghana',  rating: 4.6, price: '$30/hr',    jobs: 98,  avatarBg: '#FFF3EE', avatarColor: '#FF5C1A' },
-    { id: 'david-okonkwo',  initials: 'DO', name: 'David Okonkwo',  skill: 'Electrician', location: 'Lagos, NG',     rating: 4.7, price: '$20/hr',    jobs: 176, avatarBg: '#FFF3EE', avatarColor: '#FF5C1A' },
-  ],
-  carpentry: [
-    { id: 'kenji-tanaka',   initials: 'KT', name: 'Kenji Tanaka',   skill: 'Carpenter',   location: 'Tokyo, Japan',  rating: 4.7, price: '¥5,500/hr', jobs: 155, avatarBg: '#FFF8EE', avatarColor: '#D97706' },
-    { id: 'marco-rossi',    initials: 'MR', name: 'Marco Rossi',    skill: 'Carpenter',   location: 'Milan, Italy',  rating: 4.7, price: '€65/hr',    jobs: 211, avatarBg: '#FFF8EE', avatarColor: '#D97706' },
-  ],
-  painting: [
-    { id: 'aisha-patel',    initials: 'AP', name: 'Aisha Patel',    skill: 'Painter',     location: 'Dubai, UAE',    rating: 5.0, price: 'AED 80/hr', jobs: 302, avatarBg: '#F0FDF4', avatarColor: '#16A34A' },
-    { id: 'fatima-rashid',  initials: 'FR', name: 'Fatima Al-Rashid', skill: 'Painter',   location: 'Riyadh, SA',    rating: 4.9, price: '$70/hr',    jobs: 189, avatarBg: '#F0FDF4', avatarColor: '#16A34A' },
-  ],
-  ac: [
-    { id: 'priya-sharma',   initials: 'PS', name: 'Priya Sharma',   skill: 'AC Technician', location: 'Mumbai, IN', rating: 4.8, price: '$25/hr',    jobs: 267, avatarBg: '#F5F0FF', avatarColor: '#7C3AED' },
-    { id: 'chen-wei',       initials: 'CW', name: 'Chen Wei',       skill: 'Technician',  location: 'Shanghai, CN',  rating: 4.6, price: '$28/hr',    jobs: 322, avatarBg: '#F5F0FF', avatarColor: '#7C3AED' },
-  ],
-  general: [
-    { id: 'james-mitchell', initials: 'JM', name: 'James Mitchell', skill: 'Electrician', location: 'London, UK',    rating: 4.9, price: '£45/hr',    jobs: 214, avatarBg: '#FFF3EE', avatarColor: '#FF5C1A' },
-    { id: 'aisha-patel',    initials: 'AP', name: 'Aisha Patel',    skill: 'Painter',     location: 'Dubai, UAE',    rating: 5.0, price: 'AED 80/hr', jobs: 302, avatarBg: '#F0FDF4', avatarColor: '#16A34A' },
-    { id: 'carlos-rivera',  initials: 'CR', name: 'Carlos Rivera',  skill: 'Plumber',     location: 'Miami, USA',    rating: 4.8, price: '$60/hr',    jobs: 189, avatarBg: '#EEF6FF', avatarColor: '#2563EB' },
-  ],
+async function fetchWorkersFromFirebase(issue: string): Promise<{workers: Worker[], skill: string}> {
+  const t = issue.toLowerCase()
+  let category = 'General'
+  
+  if (t.match(/pipe|leak|water|plumb|tap|drain|toilet|bathroom/))      category = 'Plumber'
+  else if (t.match(/electric|wire|power|socket|light|fuse|volt|panel/)) category = 'Electrician'
+  else if (t.match(/wood|cabinet|furniture|door|floor|carpenter|shelf/)) category = 'Carpenter'
+  else if (t.match(/paint|wall|colour|color|decor/))                 category = 'Painter'
+  else if (t.match(/ac|air con|cooling|hvac|heat/))                  category = 'AC Technician'
+
+  try {
+    const q = query(
+      collection(db, 'workers'),
+      where('skill', '==', category),
+      limit(3)
+    )
+    const querySnapshot = await getDocs(q)
+    const workers: Worker[] = []
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data()
+      workers.push({
+        id: doc.id,
+        initials: data.initials || data.name?.charAt(0) || 'W',
+        name: data.name || 'Pro Worker',
+        skill: data.skill || category,
+        location: data.location || 'Nearby',
+        rating: data.rating || 5.0,
+        price: data.price || 'Contact for price',
+        jobs: data.jobs || 0,
+        avatarBg: data.avatarBg || '#EEF6FF',
+        avatarColor: data.avatarColor || '#2563EB'
+      })
+    })
+
+    // Fallback if no specific category workers found
+    if (workers.length === 0) {
+      const fallbackSnap = await getDocs(query(collection(db, 'workers'), limit(3)))
+      fallbackSnap.forEach(doc => {
+        const d = doc.data()
+        workers.push({ id: doc.id, ...d } as Worker)
+      })
+    }
+
+    return { workers, skill: category }
+  } catch (error) {
+    console.error("Firebase Error:", error)
+    return { workers: [], skill: category }
+  }
 }
 
-function detectCategory(text: string): string {
-  const t = text.toLowerCase()
-  if (t.match(/pipe|leak|water|plumb|tap|drain|toilet|bathroom/))    return 'plumbing'
-  if (t.match(/electric|wire|power|socket|light|fuse|volt|panel/))   return 'electrical'
-  if (t.match(/wood|cabinet|furniture|door|floor|carpenter|shelf/))  return 'carpentry'
-  if (t.match(/paint|wall|colour|color|decor/))                      return 'painting'
-  if (t.match(/ac|air con|cooling|hvac|heat/))                       return 'ac'
-  return 'general'
-}
-
-// ─── CONVERSATION FLOW ───────────────────────────────────────────────────────
-
-function buildFlow(issue: string, when: string, time: string): Message[] {
-  const category = detectCategory(issue)
-  const workers  = workerPool[category] ?? workerPool.general
-  const skill    = workers[0]?.skill ?? 'worker'
-
-  return [
-    {
-      id: 100, role: 'ai',
-      text: `Got it! Let me summarise what you need:\n\n📋 **Job:** ${issue}\n📅 **When:** ${when}\n⏰ **Preferred time:** ${time}\n\nI'm fetching the best ${skill}s available for you now…`,
-    },
-    {
-      id: 101, role: 'ai',
-      text: `Great news! I found **${workers.length} verified ${skill}s** near you. Here are the top matches:`,
-      workers,
-    },
-  ]
-}
-
-// ─── STYLES ──────────────────────────────────────────────────────────────────
+// ─── STYLES (STRICTLY UNCHANGED) ──────────────────────────────────────────────
 
 const S = `
   .ai-page {
@@ -107,7 +106,6 @@ const S = `
     flex-direction: column;
   }
 
-  /* HEADER */
   .ai-header {
     background: white;
     border-bottom: 1px solid #E8E6E1;
@@ -148,7 +146,6 @@ const S = `
   }
   .ai-reset-btn:hover { border-color: #FF5C1A; color: #FF5C1A; }
 
-  /* BODY */
   .ai-body {
     flex: 1;
     max-width: 800px;
@@ -160,7 +157,6 @@ const S = `
     gap: 20px;
   }
 
-  /* WELCOME STATE */
   .ai-welcome { text-align: center; padding: 48px 20px 24px; }
   .ai-welcome-icon {
     width: 72px; height: 72px;
@@ -190,7 +186,6 @@ const S = `
   }
   .quick-prompt:hover { border-color: #FF5C1A; color: #FF5C1A; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(255,92,26,0.10); }
 
-  /* MESSAGES */
   .msg-row {
     display: flex;
     gap: 12px;
@@ -226,7 +221,6 @@ const S = `
   }
   .msg-bubble strong { font-weight: 700; }
 
-  /* OPTION CHIPS */
   .option-chips {
     display: flex; flex-wrap: wrap; gap: 8px;
     margin-top: 12px;
@@ -239,7 +233,6 @@ const S = `
   }
   .option-chip:hover { background: #FF5C1A; color: white; }
 
-  /* TYPING INDICATOR */
   .typing-indicator {
     display: flex; align-items: center; gap: 5px;
     padding: 14px 18px;
@@ -258,7 +251,6 @@ const S = `
     30% { transform: translateY(-4px); opacity: 1; }
   }
 
-  /* WORKER RESULT CARDS */
   .worker-results { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
   .result-card {
     background: white; border: 1px solid #E8E6E1;
@@ -300,7 +292,6 @@ const S = `
   }
   .result-view:hover { border-color: #0F0F0F; color: #0F0F0F; }
 
-  /* INPUT BAR */
   .ai-input-bar {
     position: fixed;
     bottom: 0; left: 0; right: 0;
@@ -365,9 +356,6 @@ const quickPrompts = [
 const timeOptions     = ['Morning (8am–12pm)', 'Afternoon (12pm–5pm)', 'Evening (5pm–9pm)', 'Flexible / Anytime']
 const schedulOptions  = ['Today', 'Tomorrow', 'This weekend', 'Next week', 'I\'m flexible']
 
-let msgId = 1
-const nextId = () => ++msgId
-
 export default function AIAssistantPage() {
   const [messages, setMessages]   = useState<Message[]>([])
   const [input, setInput]         = useState('')
@@ -376,6 +364,7 @@ export default function AIAssistantPage() {
   const [issue, setIssue]         = useState('')
   const [when, setWhen]           = useState('')
   const bottomRef                 = useRef<HTMLDivElement>(null)
+  const router = useRouter();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -385,12 +374,12 @@ export default function AIAssistantPage() {
     setIsTyping(true)
     setTimeout(() => {
       setIsTyping(false)
-      setMessages(p => [...p, { ...msg, id: nextId(), role: 'ai' }])
+      setMessages(p => [...p, { ...msg, id: Date.now(), role: 'ai' }])
     }, delay)
   }
 
   const pushUser = (text: string) => {
-    setMessages(p => [...p, { id: nextId(), role: 'user', text }])
+    setMessages(p => [...p, { id: Date.now(), role: 'user', text }])
   }
 
   const handleSend = (text?: string) => {
@@ -401,7 +390,7 @@ export default function AIAssistantPage() {
     advance(val)
   }
 
-  const advance = (val: string) => {
+  const advance = async (val: string) => {
     if (step === 0) {
       setIssue(val)
       setStep(1)
@@ -419,15 +408,24 @@ export default function AIAssistantPage() {
     } else if (step === 2) {
       const time = val
       setStep(3)
-      const flow = buildFlow(issue, when, time)
-      // confirm message
-      pushAI({ text: flow[0].text }, 600)
-      // results message after delay
+      
+      // FETCH FROM FIREBASE
+      const { workers, skill } = await fetchWorkersFromFirebase(issue)
+
+      pushAI({ 
+        text: `Got it! Let me summarise what you need:\n\n📋 **Job:** ${issue}\n📅 **When:** ${when}\n⏰ **Preferred time:** ${time}\n\nI'm fetching the best ${skill}s from our verified database now…` 
+      }, 600)
+
       setTimeout(() => {
         setIsTyping(true)
         setTimeout(() => {
           setIsTyping(false)
-          setMessages(p => [...p, { ...flow[1], id: nextId(), role: 'ai' }])
+          setMessages(p => [...p, { 
+            id: Date.now(), 
+            role: 'ai', 
+            text: `Great news! I found **${workers.length} verified ${skill}s** available near you. Here are the top matches:`,
+            workers 
+          }])
           setStep(6)
         }, 1800)
       }, 1400)
@@ -462,8 +460,6 @@ export default function AIAssistantPage() {
       pushAI({ text: 'Hi! I\'m your FixMate AI assistant 👋\n\nI\'ll help you find the perfect worker in minutes. First — what do you need fixed or done?' }, 300)
     }
   }
-  const router = useRouter();
-
 
   return (
     <>
@@ -472,7 +468,7 @@ export default function AIAssistantPage() {
         <ArrowLeft
           size={30}
           color="#AFAFAF"
-          className="cursor-pointer ml-10"
+          className="cursor-pointer ml-10 mt-4"
           onClick={() => router.back()}
         />
         <div className="ai-header">
@@ -494,7 +490,6 @@ export default function AIAssistantPage() {
         </div>
 
         <div className="ai-body">
-
           {messages.length === 0 && (
             <div className="ai-welcome">
               <div className="ai-welcome-icon">
@@ -515,7 +510,6 @@ export default function AIAssistantPage() {
             </div>
           )}
 
-          {/* Messages */}
           {messages.map(msg => (
             <div key={msg.id} className={`msg-row ${msg.role}`}>
               <div className={`msg-avatar ${msg.role}`}>
@@ -531,7 +525,6 @@ export default function AIAssistantPage() {
                   )}
                 </div>
 
-                {/* Option chips */}
                 {msg.options && step <= 2 && (
                   <div className="option-chips">
                     {msg.options.map(opt => (
@@ -542,7 +535,6 @@ export default function AIAssistantPage() {
                   </div>
                 )}
 
-                {/* Worker results */}
                 {msg.workers && (
                   <div className="worker-results">
                     {msg.workers.map(w => (
@@ -574,7 +566,6 @@ export default function AIAssistantPage() {
             </div>
           ))}
 
-          {/* Typing indicator */}
           {isTyping && (
             <div className="msg-row ai">
               <div className="msg-avatar ai"><Bot size={17} color="white" /></div>
@@ -589,7 +580,6 @@ export default function AIAssistantPage() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Input Bar */}
         <div className="ai-input-bar">
           <div className="ai-input-inner">
             <div className="ai-input-field">
@@ -615,7 +605,6 @@ export default function AIAssistantPage() {
             Powered by FixMate AI · Your data is private and never shared
           </p>
         </div>
-
       </div>
     </>
   )
