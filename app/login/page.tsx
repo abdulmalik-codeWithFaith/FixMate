@@ -7,8 +7,9 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight, Wrench, Star, Shield, Zap } from '
 import Image from 'next/image'
 import Logo from "@/public/logo.svg"
 
-import { auth } from '@/lib/firebase'
+import { auth, db } from '@/lib/firebase' // Added db import
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore' // Added Firestore methods
 import toast, { Toaster } from 'react-hot-toast'
 
 const S = `
@@ -90,22 +91,41 @@ export default function LoginPage() {
   const [password, setPassword]         = useState('')
   const [errors, setErrors]             = useState<{ email?: string; password?: string }>({})
 
-  const handlePostLogin = (displayName?: string | null) => {
-    const redirect = sessionStorage.getItem('authRedirect')
-    sessionStorage.removeItem('authRedirect')           // always clean up
+  const handlePostLogin = async (uid: string, displayName?: string | null) => {
+    try {
+      // Fetch user role from Firestore
+      const userDoc = await getDoc(doc(db, 'users', uid))
+      const userData = userDoc.data()
+      const role = userData?.role || 'client' // Default to client if not found
 
-    toast.success(`Welcome back${displayName ? `, ${displayName}` : ''}!`)
+      const redirect = sessionStorage.getItem('authRedirect')
+      sessionStorage.removeItem('authRedirect')
 
-    setTimeout(() => {
-      router.push(redirect || '/dashboard')
-    }, 600)
+      toast.success(`Welcome back${displayName ? `, ${displayName}` : ''}!`)
+
+      setTimeout(() => {
+        if (redirect) {
+          router.push(redirect)
+        } else {
+          // Role-based redirection logic
+          if (role === 'worker') {
+            router.push('/worker/dashboard')
+          } else {
+            router.push('/dashboard')
+          }
+        }
+      }, 600)
+    } catch (error) {
+      console.error("Error fetching user role:", error)
+      router.push('/dashboard') // Fallback
+    }
   }
 
   const validate = () => {
     const e: { email?: string; password?: string } = {}
-    if (!email)                              e.email    = 'Email is required'
+    if (!email)                               e.email    = 'Email is required'
     else if (!/\S+@\S+\.\S+/.test(email))   e.email    = 'Enter a valid email'
-    if (!password)                           e.password = 'Password is required'
+    if (!password)                            e.password = 'Password is required'
     else if (password.length < 6)           e.password = 'Must be at least 6 characters'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -116,7 +136,7 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider()
     try {
       const result = await signInWithPopup(auth, provider)
-      handlePostLogin(result.user.displayName)
+      await handlePostLogin(result.user.uid, result.user.displayName)
     } catch (err: any) {
       if (err.code !== 'auth/popup-closed-by-user') {
         toast.error('Google sign-in failed. Please try again.')
@@ -125,7 +145,7 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
-  // ── Email / Password Sign-in ─────────────────────────────────────────────────
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
@@ -133,7 +153,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const result = await signInWithEmailAndPassword(auth, email, password)
-      handlePostLogin(result.user.displayName)
+      await handlePostLogin(result.user.uid, result.user.displayName)
     } catch (err: any) {
       const code = err.code || ''
       let msg = 'Incorrect email or password. Please try again.'
@@ -141,8 +161,8 @@ export default function LoginPage() {
       if (code === 'auth/wrong-password')       msg = 'Incorrect password.'
       if (code === 'auth/invalid-credential')   msg = 'Incorrect email or password. Please try again.'
       if (code === 'auth/too-many-requests')    msg = 'Too many attempts. Please wait a moment.'
-      if (code === 'auth/user-disabled')        msg = 'This account has been disabled. Contact support.'
-      if (code === 'auth/invalid-email')        msg = 'Please enter a valid email address.'
+      if (code === 'auth/user-disabled')         msg = 'This account has been disabled. Contact support.'
+      if (code === 'auth/invalid-email')         msg = 'Please enter a valid email address.'
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -156,7 +176,6 @@ export default function LoginPage() {
 
       <div className="auth-page">
 
-        {/* ── LEFT PANEL ── */}
         <div className="auth-left">
           <div className="auth-left-glow" />
           <div className="auth-left-glow2" />
@@ -181,7 +200,7 @@ export default function LoginPage() {
 
             <div className="auth-features">
               {[
-                { icon: <Zap size={18} color="#FF5C1A" />,    title: 'Book in Minutes',       sub: 'Find and book a verified worker in under 5 minutes'     },
+                { icon: <Zap size={18} color="#FF5C1A" />,    title: 'Book in Minutes',     sub: 'Find and book a verified worker in under 5 minutes'     },
                 { icon: <Shield size={18} color="#FF5C1A" />, title: 'Verified & Safe',        sub: 'Every worker is ID-checked and background verified'      },
                 { icon: <Star size={18} color="#FF5C1A" />,   title: 'Rated by Real Clients',  sub: 'Transparent reviews from real customers like you'        },
                 { icon: <Wrench size={18} color="#FF5C1A" />, title: '60+ Service Categories', sub: 'From plumbing to carpentry — we have every skill covered' },
@@ -214,7 +233,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* ── RIGHT PANEL ── */}
         <div className="auth-right">
           <div className="auth-form-wrap">
 
