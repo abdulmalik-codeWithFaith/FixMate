@@ -7,7 +7,6 @@ import { Eye, EyeOff, Mail, Lock, ArrowRight, Wrench, Star, Shield, Zap } from '
 import Image from 'next/image'
 import Logo from "@/public/logo.svg"
 
-// Firebase Imports
 import { auth } from '@/lib/firebase'
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import toast, { Toaster } from 'react-hot-toast'
@@ -91,22 +90,17 @@ export default function LoginPage() {
   const [password, setPassword]         = useState('')
   const [errors, setErrors]             = useState<{ email?: string; password?: string }>({})
 
-  // ── Read the redirect destination saved by the worker profile page ──────────
-  // The profile page calls: sessionStorage.setItem('authRedirect', '/booking/id')
-  // After login we read it, clear it, then navigate there (or fall back to /dashboard)
   const handlePostLogin = (displayName?: string | null) => {
     const redirect = sessionStorage.getItem('authRedirect')
     sessionStorage.removeItem('authRedirect')           // always clean up
 
     toast.success(`Welcome back${displayName ? `, ${displayName}` : ''}!`)
 
-    // Small delay so the toast is visible before navigation
     setTimeout(() => {
       router.push(redirect || '/dashboard')
     }, 600)
   }
 
-  // ── Validation ───────────────────────────────────────────────────────────────
   const validate = () => {
     const e: { email?: string; password?: string } = {}
     if (!email)                              e.email    = 'Email is required'
@@ -117,7 +111,6 @@ export default function LoginPage() {
     return Object.keys(e).length === 0
   }
 
-  // ── Google Sign-in ───────────────────────────────────────────────────────────
   const handleGoogleLogin = async () => {
     setLoading(true)
     const provider = new GoogleAuthProvider()
@@ -125,7 +118,6 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider)
       handlePostLogin(result.user.displayName)
     } catch (err: any) {
-      // Don't toast if user simply closed the popup
       if (err.code !== 'auth/popup-closed-by-user') {
         toast.error('Google sign-in failed. Please try again.')
       }
@@ -133,7 +125,6 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
-
   // ── Email / Password Sign-in ─────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -144,7 +135,6 @@ export default function LoginPage() {
       const result = await signInWithEmailAndPassword(auth, email, password)
       handlePostLogin(result.user.displayName)
     } catch (err: any) {
-      // Map Firebase error codes to friendly messages
       const code = err.code || ''
       let msg = 'Incorrect email or password. Please try again.'
       if (code === 'auth/user-not-found')      msg = 'No account found with this email.'
