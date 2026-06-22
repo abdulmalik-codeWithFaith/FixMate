@@ -1,7 +1,15 @@
-import type { NextConfig } from "next";
+import withPWAInit from 'next-pwa'
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+const withPWA = withPWAInit({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
+  publicExcludes: ['!firebase-messaging-sw.js'],
+})
 
-export default nextConfig;
+const nextConfig = {
+  turbopack: {}, // silences the turbopack/webpack conflict error
+}
+
+export default withPWA(nextConfig)
