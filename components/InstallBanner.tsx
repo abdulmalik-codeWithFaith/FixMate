@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Image from 'next/image'
 
 interface BeforeInstallPromptEvent extends Event {
@@ -11,14 +11,10 @@ interface BeforeInstallPromptEvent extends Event {
 export default function InstallBanner(): React.ReactElement | null {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showBanner, setShowBanner] = useState<boolean>(false)
-  const [isInstalled, setIsInstalled] = useState<boolean>(false)
 
   useEffect(() => {
-    // Don't show if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true)
-      return
-    }
+    // Don't show if already running as installed PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) return
 
     // Don't show if user already dismissed
     const dismissed = localStorage.getItem('pwa-banner-dismissed')
@@ -30,16 +26,25 @@ export default function InstallBanner(): React.ReactElement | null {
       setShowBanner(true)
     }
 
+    // Check if event already fired before component mounted
     window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
+
+    // Force show banner after 3 seconds if prompt doesn't fire
+    // (useful when Chrome delays the event)
+    const timer = setTimeout(() => {
+      setShowBanner(true)
+    }, 3000)
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler)
+      clearTimeout(timer)
+    }
   }, [])
 
   const handleInstall = async (): Promise<void> => {
     if (!deferredPrompt) return
-
     await deferredPrompt.prompt()
     const { outcome } = await deferredPrompt.userChoice
-
     if (outcome === 'accepted') {
       setShowBanner(false)
       setDeferredPrompt(null)
@@ -51,17 +56,10 @@ export default function InstallBanner(): React.ReactElement | null {
     localStorage.setItem('pwa-banner-dismissed', 'true')
   }
 
-  if (isInstalled || !showBanner) return null
+  if (!showBanner) return null
 
   return (
-    <div
-      className={`
-        fixed bottom-0 left-0 right-0 z-50
-        transform transition-transform duration-500 ease-in-out
-        ${showBanner ? 'translate-y-0' : 'translate-y-full'}
-      `}
-    >
-      {/* Backdrop blur edge */}
+    <div className="fixed bottom-0 left-0 right-0 z-50 transform transition-transform duration-500 ease-in-out translate-y-0">
       <div className="bg-white border-t border-gray-200 shadow-2xl rounded-t-2xl px-5 pt-5 pb-8">
 
         {/* Drag handle */}
@@ -99,18 +97,22 @@ export default function InstallBanner(): React.ReactElement | null {
           </button>
         </div>
 
-        {/* Install Button */}
-        <button
-          onClick={handleInstall}
-          className="mt-4 w-full bg-black text-white font-semibold text-sm py-3.5 rounded-xl hover:bg-gray-800 active:scale-95 transition-all duration-200"
-        >
-          Add to Home Screen
-        </button>
-
-        {/* iOS hint */}
-        <p className="text-center text-xs text-gray-400 mt-3">
-          On iPhone? Tap <span className="font-medium">Share</span> → <span className="font-medium">Add to Home Screen</span>
-        </p>
+        {/* Install Button — shows native prompt if available, otherwise shows manual instructions */}
+        {deferredPrompt ? (
+          <button
+            onClick={handleInstall}
+            className="mt-4 w-full bg-black text-white font-semibold text-sm py-3.5 rounded-xl hover:bg-gray-800 active:scale-95 transition-all duration-200"
+          >
+            Add to Home Screen
+          </button>
+        ) : (
+          <div className="mt-4 bg-gray-50 rounded-xl p-3">
+            <p className="text-center text-xs text-gray-500">
+              Tap the <span className="font-semibold">⋮ menu</span> in Chrome → 
+              <span className="font-semibold"> Add to Home screen</span>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
