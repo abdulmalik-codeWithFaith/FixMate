@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Search, MapPin, Star, ChevronRight, Wrench, Hammer, Wind, Paintbrush, Settings, Layers, Zap } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import InstallBanner from '@/components/InstallBanner'
 import Logo from "@/public/logo.svg"
 
 const services = [
@@ -433,6 +434,7 @@ export default function LandingPage() {
   return (
     <>
       <Navbar/>
+      <InstallBanner />
       <style>{S}</style>
       <div className="page">
 
