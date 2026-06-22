@@ -70,7 +70,7 @@ export default function InstallBanner(): React.ReactElement | null {
           <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md flex-shrink-0">
             <Image
               src="/icons/logo.svg"
-              alt="FixMate"
+              alt="FixMates"
               width={64}
               height={64}
               className="w-full h-full object-cover"
