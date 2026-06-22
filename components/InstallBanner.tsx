@@ -103,7 +103,7 @@ export default function InstallBanner(): React.ReactElement | null {
             onClick={handleInstall}
             className="mt-4 w-full bg-black text-white font-semibold text-sm py-3.5 rounded-xl hover:bg-gray-800 active:scale-95 transition-all duration-200"
           >
-            Add to Home Screen
+            Install App
           </button>
         ) : (
           <div className="mt-4 bg-gray-50 rounded-xl p-3">
