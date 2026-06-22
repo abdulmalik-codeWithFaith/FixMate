@@ -434,10 +434,9 @@ export default function LandingPage() {
   return (
     <>
       <Navbar/>
-      <InstallBanner />
       <style>{S}</style>
       <div className="page">
-
+      <InstallBanner />
         <section className="hero">
           <div className="hero-glow" />
           <div className="hero-inner">
