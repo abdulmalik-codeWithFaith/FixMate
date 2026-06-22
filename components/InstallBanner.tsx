@@ -69,7 +69,7 @@ export default function InstallBanner(): React.ReactElement | null {
           {/* App Icon */}
           <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md flex-shrink-0">
             <Image
-              src="/icons/icon-192x192.png"
+              src="/icons/logo.svg"
               alt="FixMate"
               width={64}
               height={64}
